@@ -1,17 +1,13 @@
 const Expense = require('../models/Expense');
 
 const CATEGORIAS_VALIDAS = [
-  'Alimentação',
-  'Moradia',
-  'Transporte',
-  'Lazer',
-  'Saúde',
-  'Outros'
+  'Alimentação', 'Moradia', 'Transporte', 'Lazer', 'Saúde', 'Outros'
 ];
 
 exports.createExpense = async (req, res) => {
   try {
-    const { valor, categoria, descricao } = req.body;
+    // --- CORREÇÃO AQUI: Lendo o createdAt do corpo da requisição ---
+    const { valor, categoria, descricao, createdAt } = req.body;
 
     // validações
     if (valor === undefined || valor <= 0) {
@@ -20,16 +16,15 @@ exports.createExpense = async (req, res) => {
       });
     }
 
-    if (!CATEGORIAS_VALIDAS.includes(categoria)) {
-      return res.status(400).json({
-        message: 'Categoria inválida'
-      });
-    }
+    // Se categoria vier vazia ou inválida, joga para Outros (opcional, mas evita erros)
+    const categoriaFinal = CATEGORIAS_VALIDAS.includes(categoria) ? categoria : 'Outros';
 
     const expense = await Expense.create({
       valor,
-      categoria,
-      descricao
+      categoria: categoriaFinal,
+      descricao,
+      // --- CORREÇÃO AQUI: Usa a data do front ou a data de agora ---
+      createdAt: createdAt ? new Date(createdAt) : new Date()
     });
 
     return res.status(201).json(expense);
@@ -40,7 +35,6 @@ exports.createExpense = async (req, res) => {
     });
   }
 };
-
 
 exports.listExpenses = async (req, res) => {
   try {
@@ -54,11 +48,26 @@ exports.listExpenses = async (req, res) => {
 exports.deleteExpense = async (req, res) => {
   try {
     const { id } = req.params;
-
     await Expense.findByIdAndDelete(id);
-
     return res.json({ message: 'Gasto removido com sucesso' });
   } catch (error) {
     return res.status(500).json({ message: 'Erro ao remover gasto', error });
+  }
+};
+
+exports.updateExpense = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { valor, categoria, descricao } = req.body;
+
+    const expense = await Expense.findByIdAndUpdate(
+      id,
+      { valor, categoria, descricao },
+      { new: true } 
+    );
+
+    return res.json(expense);
+  } catch (error) {
+    return res.status(500).json({ message: 'Erro ao atualizar', error });
   }
 };
